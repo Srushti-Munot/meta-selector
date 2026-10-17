@@ -45,7 +45,7 @@ CSS = """
 :root {
   --paper: #FAF6EE; --card: #FFFDF8; --ink: #2B2420; --muted: #7A6E63;
   --line: #E4DACA; --accent: #B4532A; --accent-soft: #F3E3D6;
-  --low: #5B7B4A; --low-bg: #EEF2E6; --med: #B07A1E; --med-bg: #F8EFD8;
+  --low: #5B7B4A; --low-bg: #EEF2E6; --med: #7A4F08; --med-bg: #F8EFD8;
   --high: #A33A2B; --high-bg: #F6E1DB;
 }
 html, body, [data-testid="stAppViewContainer"], .stApp { background: var(--paper); color: var(--ink); }
@@ -213,7 +213,7 @@ def verdict(v):
         return (f"{a['Algorithm']} scored {gap * 100:.1f} points higher than {b['Algorithm']}; the fold-to-fold "
                 f"spread is about {spread * 100:.1f} points, so treat this as a near tie.")
     return (f"{a['Algorithm']} scored {gap * 100:.1f} points higher than {b['Algorithm']}, which is larger than the "
-            f"fold-to-fold spread (about {spread * 100:.1f} points), so the lead looks real on this data.")
+            f"fold-to-fold spread (about {spread * 100:.1f} points), so the lead may be real, though a single 5-fold run is only a rough guide.")
 
 
 # ----------------------------------------------------------------------------- tab: try it
@@ -226,6 +226,7 @@ def render_try(bundle):
     source = st.radio("Data", ["Upload a CSV", "Use an example dataset"], horizontal=True,
                       label_visibility="collapsed")
     df, default_target, name_label = None, None, None
+    cur_key = None
     if source == "Upload a CSV":
         up = st.file_uploader("CSV file (classification: one column is the label)", type="csv")
         if up is not None:
@@ -242,9 +243,14 @@ def render_try(bundle):
                               index=cols.index(default_target) if default_target in cols else len(cols) - 1)
         drop_cols = st.multiselect("Columns to ignore (IDs, free text, dates)", [c for c in cols if c != target])
         st.caption(f"{len(df):,} rows, {len(cols)} columns")
+        try:
+            content = int(pd.util.hash_pandas_object(df, index=False).sum())
+        except Exception:
+            content = 0
+        cur_key = (name_label, target, tuple(drop_cols), len(df), tuple(map(str, cols)), content)
 
         if st.button("Analyze dataset", type="primary"):
-            key = (name_label, target, tuple(drop_cols))
+            key = cur_key
             try:
                 with st.spinner("Profiling the dataset (a few seconds)..."):
                     st.session_state["analysis"] = analyze(df, target, drop_cols, bundle)
@@ -256,6 +262,9 @@ def render_try(bundle):
 
     a = st.session_state.get("analysis")
     if a is None:
+        return
+    if st.session_state.get("key") != cur_key:
+        st.info("The file or selections changed since the last analysis. Click Analyze dataset to refresh the results.")
         return
     f = a["feats"]
     for n in a["notes"]:
@@ -278,7 +287,8 @@ def render_try(bundle):
             f"Among unseen datasets that our risk model put in this band, LightGBM was beaten by more than 1 point "
             f"of balanced accuracy on <b>{rec['observed_rate']:.0%}</b> (95% interval {rec['ci_low']:.0%} to "
             f"{rec['ci_high']:.0%}, {rec['n_datasets']} datasets). Across all {N_UNSEEN} unseen datasets that "
-            f"happened {bundle['base_rate']:.0%} of the time.")
+            f"happened {bundle['base_rate']:.0%} of the time. These rates come from OpenML benchmark datasets and may not "
+            "transfer to your data.")
     if rec["n_datasets"] < 20:
         st.caption(f"Only {rec['n_datasets']} unseen datasets fell in this band, so the rate above is rough.")
 
@@ -308,14 +318,20 @@ def render_try(bundle):
     callout("pick", "Start here: Logistic Regression + LightGBM",
             f"Across {N_UNSEEN} unseen datasets, this pair came within 1 point of the best of all six models on "
             f"<b>{PAIR_CLOSE:.0%}</b> of them (LightGBM alone: {LGBM_CLOSE:.0%}), and saved about "
-            f"<b>{PAIR_SAVED:.0%}</b> of the training time compared with training all six (average of measured "
-            "times). The pair was picked on the discovery datasets, so the comparison on unseen data is exploratory.")
-    callout("exp", "Experimental: the selector's own pick for your data",
-            f"<b>{html.escape(NAMES[selector[0]])} + {html.escape(NAMES[selector[1]])}</b>. In held-out tests this "
-            f"per-dataset prediction did slightly worse than the fixed pair: mean regret {SEL_PAIR_REGRET} vs "
-            f"{FIXED_PAIR_REGRET}, within 1 point of the best on {SEL_CLOSE:.0%} vs {PAIR_CLOSE:.0%} of datasets, and "
-            f"about {SEL_SAVED:.0%} vs {PAIR_SAVED:.0%} training time saved. The regret difference is not "
-            "statistically significant, which is why the fixed pair comes first.")
+            f"<b>{PAIR_SAVED:.0%}</b> of measured training time on average compared with training all six (5-fold CV fit and predict time, one "
+            "machine). The pair was picked on the discovery datasets, so the comparison on unseen data is exploratory.")
+    if set(selector) == set(fixed):
+        callout("exp", "Experimental: the selector's own pick for your data",
+                "For this dataset the selector suggests the same pair, Logistic Regression + LightGBM. In held-out "
+                "tests its per-dataset picks were not significantly better than the fixed pair, so treat the "
+                "agreement as mild reassurance, not proof.")
+    else:
+        callout("exp", "Experimental: the selector's own pick for your data",
+                f"<b>{html.escape(NAMES[selector[0]])} + {html.escape(NAMES[selector[1]])}</b>. In held-out tests "
+                f"this per-dataset prediction did slightly worse on average than the fixed pair (a difference that is "
+                f"not statistically significant): mean regret {SEL_PAIR_REGRET} vs {FIXED_PAIR_REGRET}, within 1 point "
+                f"of the best on {SEL_CLOSE:.0%} vs {PAIR_CLOSE:.0%} of datasets, and about {SEL_SAVED:.0%} vs "
+                f"{PAIR_SAVED:.0%} measured training time saved. That is why the fixed pair comes first.")
 
     also = st.checkbox("Also train the remaining models (slower)")
     if st.button("Verify on my data"):
@@ -331,7 +347,8 @@ def render_try(bundle):
         if msg:
             callout("note", "Verdict", html.escape(msg))
         st.caption("Cross-validated balanced accuracy on the data above (a stratified sample of at most 5,000 rows "
-                   "if yours is larger). Default hyperparameters, as in the study.")
+                   "if yours is larger). Near-default hyperparameters, as in the study. Cross-validation estimates performance on "
+                   "this data only; it does not guarantee performance on future data.")
 
     with st.expander("Experimental: six-way ranking from the selector (did not beat fixed defaults)"):
         st.write("Predicted order, best first: " + " > ".join(NAMES[k] for k in a["ranking"]))
@@ -361,9 +378,10 @@ def render_study(bundle):
 
     label("How was it tested?")
     st.markdown(
-        f"- **{bundle['n_train']} real datasets** from OpenML, a public library of machine-learning datasets.\n"
+        f"- **{bundle['n_train']} real datasets** from OpenML, a public library of machine-learning datasets (59 from the "
+        "CC18 benchmark suite and 247 sampled from the rest of OpenML).\n"
         "- **Six algorithms** on each: logistic regression, kNN, random forest, extra trees, LightGBM and an "
-        "RBF-SVM, all with default settings.\n"
+        "RBF-SVM, all with near-default settings.\n"
         "- **Score:** balanced accuracy from 5-fold cross-validation (it treats small and large classes fairly).\n"
         "- **20 cheap facts per dataset** (rows, columns, class balance, how skewed the numbers are, and a few "
         "quick test models). These are the *meta-features*.\n"
@@ -376,9 +394,9 @@ def render_study(bundle):
 
     label("How the idea evolved")
     step(1, "First try: pick the single best algorithm",
-         "We trained a selector to choose the best of six from the 20 facts. On the 159 unseen datasets it tied "
-         "with simply always using LightGBM (regret 0.0082 vs 0.0084; the difference is too small to tell apart "
-         "from luck). One reason: LightGBM is already within 1 point of the best on about 77% of datasets, so "
+         "We trained a selector to choose the best of six from the 20 facts. On the 159 unseen datasets it was not significantly better than "
+         "simply always using LightGBM (regret 0.0082 vs 0.0084; the difference is too small to tell apart "
+         "from luck). A likely reason: LightGBM is already within 1 point of the best on about 77% of datasets, so "
          "there is little room to improve.")
     step(2, "New question: where does LightGBM lose?",
          "On the 147 exploration datasets, LightGBM was beaten by more than 1 point on about 29%. When it lost, a "
@@ -394,7 +412,7 @@ def render_study(bundle):
          "selector. This was an exploratory check run after the main test.")
     step(5, "Is the pattern real or a fluke of one cutoff?",
          "We repeated the analysis with three definitions of \"LightGBM loses\" (0.5, 1 and 2 points). The "
-         "direction held every time. The ability to predict losses ranged from AUC 0.65 to 0.78 depending on the "
+         "direction of the pattern held every time. On unseen data the link with dataset size stayed statistically significant at all three, while the plain small-vs-large loss-rate gap pointed the same way but was not (p about 0.10 to 0.12). The ability to predict losses ranged from AUC 0.65 to 0.78 depending on the "
          "definition, so that range is what we report.")
     step(6, "Can we name the exact replacement?",
          "Partly: logistic regression is the easiest to predict. But switching models based on those predictions "
@@ -404,28 +422,28 @@ def render_study(bundle):
     label("Four questions, four answers")
     st.markdown(
         "| Question | Answer |\n|---|---|\n"
-        "| Can the facts pick the best algorithm better than always-LightGBM? | **No.** A tie. |\n"
+        "| Can the facts pick the best algorithm better than always-LightGBM? | **No.** No significant difference. |\n"
         "| Can they predict when LightGBM will be beaten? | **Yes, modestly**, mostly through dataset size. |\n"
         "| Can they identify the exact replacement? | **Partly**, and switching does not help. |\n"
         "| Does a fixed Logistic Regression + LightGBM pair work anyway? | **Yes**, within 1 point of the best on about 89% of unseen datasets. |")
 
     label("What did not work")
     st.markdown(
-        "- The learned selector never significantly beat LightGBM.\n"
+        "- The selector I built never significantly beat LightGBM.\n"
         "- \"Use logistic regression on small data\" was **worse** than LightGBM on average, because the winning "
         "simple model varies from dataset to dataset.\n"
         "- Switching to the predicted replacement was a tie at best.\n\n"
         "\"A boosted-tree model plus a linear baseline is a strong default\" is something practitioners already "
         "believe. What this project adds is measured evidence and effect sizes across 306 datasets.")
 
-    
     label("Limits to keep in mind")
     st.markdown(
         "- OpenML contains near-duplicate datasets, so the 306 are not fully independent. That may make "
         "held-out results look slightly better than they are.\n"
-        f"- {N_UNSEEN} test datasets cannot detect differences smaller than about 0.15 accuracy points.\n"
-        "- Default settings only. Tuned models might change the picture, and this was not tested.\n"
-        "- Datasets capped at 5,000 rows and 200 features; classification only; balanced accuracy only.\n"
+        "- The 95% interval for the selector's regret difference versus always-LightGBM was roughly -0.16 to +0.13 "
+        "accuracy points, so effects of that size cannot be ruled out either way.\n"
+        "- Near-default settings only. Tuned models might change the picture, and this was not tested.\n"
+        "- Datasets over 5,000 rows were sampled down to 5,000; datasets with more than 200 features were excluded; classification only; balanced accuracy only.\n"
         "- The 1,500-row cutoff was chosen after looking at the exploration data.\n"
         "- The models inside this app were retrained on all 306 datasets, so the numbers above come from the "
         "147-train, 159-test setup, not from the app's own models.")
@@ -453,8 +471,8 @@ if sklearn.__version__ != bundle["sklearn_version"]:
 st.markdown(f'<div class="kicker">Meta-learning · {bundle["n_train"]} OpenML datasets · held-out tested</div>',
             unsafe_allow_html=True)
 st.title("Which model should I try first?")
-st.caption("This tool does not claim to pick the single best model. In held-out tests, no learned selector beat "
-           "simple fixed defaults.")
+st.caption("This tool does not claim to pick the single best model. In held-out tests, the learned selector I built "
+           "did not beat simple fixed defaults.")
 
 tab_try, tab_study = st.tabs(["Try it", "The study"])
 with tab_try:
