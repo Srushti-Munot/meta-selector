@@ -1,0 +1,47 @@
+﻿EXPLORATORY (the confirmation set was already used for H1-H4).
+
+=== PRIMARY: trained on discovery, tested on unseen confirmation datasets  (159 datasets) ===
+                                      policy  mean_regret  within_1pct  switched  switch_beat_lgbm  better_than_lgbm  worse_than_lgbm
+                             always LightGBM       0.0084       0.7673    0.0000               NaN                 0                0
+           size rule (logreg if <=1500 rows)       0.0265       0.7170    0.2327            0.3514                13               19
+A: best alternative if P>=0.5, else LightGBM       0.0085       0.7421    0.2767            0.5000                22               21
+       B: always the most likely alternative       0.0294       0.5031    1.0000            0.3208                51              101
+
+Policy minus always-LightGBM regret (negative = better), 95% bootstrap CI:
+  size rule (logreg if <=1500 rows)                    +0.0181  [+0.0079, +0.0296]  -> not supported
+  A: best alternative if P>=0.5, else LightGBM         +0.0001  [-0.0012, +0.0014]  -> not supported
+  B: always the most likely alternative                +0.0211  [+0.0110, +0.0326]  -> not supported
+
+Can we predict whether each alternative beats LightGBM? (AUC; 0.5 = chance)
+  logreg      beats LightGBM on 42/159 datasets (26%) | AUC = 0.770
+  knn         beats LightGBM on 23/159 datasets (14%) | AUC = 0.503
+  rf          beats LightGBM on 51/159 datasets (32%) | AUC = 0.643
+  extratrees  beats LightGBM on 35/159 datasets (22%) | AUC = 0.566
+  svm         beats LightGBM on 24/159 datasets (15%) | AUC = 0.655
+
+Pooled leave-one-dataset-out over all datasets (a few minutes)...
+  ... 50/306
+  ... 100/306
+  ... 150/306
+  ... 200/306
+  ... 250/306
+  ... 300/306
+
+=== SECONDARY: pooled leave-one-dataset-out  (306 datasets) ===
+                                      policy  mean_regret  within_1pct  switched  switch_beat_lgbm  better_than_lgbm  worse_than_lgbm
+                             always LightGBM       0.0088       0.7418    0.0000               NaN                 0                0
+           size rule (logreg if <=1500 rows)       0.0240       0.7026    0.2680            0.3537                29               44
+A: best alternative if P>=0.5, else LightGBM       0.0092       0.7810    0.3824            0.6496                76               39
+       B: always the most likely alternative       0.0298       0.5556    1.0000            0.3987               122              171
+
+Policy minus always-LightGBM regret (negative = better), 95% bootstrap CI:
+  size rule (logreg if <=1500 rows)                    +0.0152  [+0.0086, +0.0224]  -> not supported
+  A: best alternative if P>=0.5, else LightGBM         +0.0005  [-0.0019, +0.0031]  -> not supported
+  B: always the most likely alternative                +0.0210  [+0.0134, +0.0295]  -> not supported
+
+Can we predict whether each alternative beats LightGBM? (AUC; 0.5 = chance)
+  logreg      beats LightGBM on 78/306 datasets (25%) | AUC = 0.806
+  knn         beats LightGBM on 44/306 datasets (14%) | AUC = 0.792
+  rf          beats LightGBM on 98/306 datasets (32%) | AUC = 0.778
+  extratrees  beats LightGBM on 80/306 datasets (26%) | AUC = 0.768
+  svm         beats LightGBM on 61/306 datasets (20%) | AUC = 0.812

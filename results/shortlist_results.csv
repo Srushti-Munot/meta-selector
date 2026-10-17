@@ -1,0 +1,7 @@
+method,mean_regret,close_within_1pct,true_best_in_shortlist,mean_compute_saved,median_compute_saved
+train all 6,0.0,1.0,1.0,0.0,0.0
+lgbm only (k=1),0.0084,0.7673,0.4214,0.8056,0.841
+CHOOSER top-2,0.004,0.8742,0.6226,0.5847,0.5711
+best fixed pair (logreg + lgbm),0.003,0.8868,0.6164,0.7481,0.781
+cheapest pair (knn + logreg),0.0391,0.4906,0.2642,0.9003,0.9092
+random pair (avg of 15),0.0194,0.4591,0.3333,0.6667,0.6667

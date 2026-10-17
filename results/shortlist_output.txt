@@ -1,0 +1,17 @@
+﻿Best fixed pair (picked on discovery): logreg + lgbm
+Cheapest pair (picked on discovery):   knn + logreg
+Mean seconds per algorithm (discovery): logreg=0.7, knn=0.4, rf=2.4, extratrees=2.0, lgbm=3.8, svm=2.6
+
+Results on 159 unseen (confirmation) datasets  [chooser trained on discovery only]
+                         method  mean_regret  close_within_1pct  true_best_in_shortlist  mean_compute_saved  median_compute_saved
+                    train all 6       0.0000             1.0000                  1.0000              0.0000                0.0000
+                lgbm only (k=1)       0.0084             0.7673                  0.4214              0.8056                0.8410
+                  CHOOSER top-2       0.0040             0.8742                  0.6226              0.5847                0.5711
+best fixed pair (logreg + lgbm)       0.0030             0.8868                  0.6164              0.7481                0.7810
+   cheapest pair (knn + logreg)       0.0391             0.4906                  0.2642              0.9003                0.9092
+        random pair (avg of 15)       0.0194             0.4591                  0.3333              0.6667                0.6667
+
+Chooser's shortlist contains LightGBM on 99% of datasets.
+
+E1: chooser top-2 regret minus best-fixed-pair regret = +0.0009  95% CI [-0.0004, +0.0024]
+    -> NOT SUPPORTED (no evidence the chooser beats a fixed pair)

@@ -1,0 +1,11 @@
+﻿LightGBM risk bands, checked on 159 unseen datasets (overall LightGBM-loses rate: 23%)
+  band  n_datasets  lgbm_lost  observed_rate  ci_low  ci_high
+   Low          74          6          0.081   0.038    0.166
+Medium          72         23          0.319   0.223    0.434
+  High          13          8          0.615   0.355    0.823
+(Bands use cutoffs 0.25 and 0.50, fixed in advance. Small n_datasets = wide interval = treat with care.)
+
+Simple model best: 57% of datasets <=1500 rows (n=37) vs 24% above (n=122)
+
+Final models trained on 306 datasets -> D:\Srushti\meta-selector\app\final_models.joblib (2.5 MB)
+scikit-learn version used: 1.9.1 (the deployed app must use the same one)

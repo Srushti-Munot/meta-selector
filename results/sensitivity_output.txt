@@ -1,0 +1,25 @@
+﻿H1 (threshold-free): share of datasets where a simple model (logreg/svm/knn) is best
+   discovery     <=1500 rows: 49% (n=45)  >1500 rows: 25% (n=102)  Fisher p=0.0051
+   confirmation  <=1500 rows: 57% (n=37)  >1500 rows: 24% (n=122)  Fisher p=0.0002
+
+Small-data pattern at each threshold (n_rows_AUC < 0.5 and loss_rate_<=1500 > loss_rate_>1500 = pattern holds)
+ threshold          set   n  lgbm_loses  loss_rate  n_rows_AUC  AUC_p  loss_rate_<=1500  loss_rate_>1500  fisher_p  simple_best_in_losses
+     0.005    discovery 147          63     0.4286      0.3498 0.0008            0.5778           0.3627    0.0125                 0.5714
+     0.005 confirmation 159          57     0.3585      0.4139 0.0316            0.4595           0.3279    0.1035                 0.5789
+     0.010    discovery 147          42     0.2857      0.3045 0.0001            0.4444           0.2157    0.0048                 0.7143
+     0.010 confirmation 159          37     0.2327      0.3838 0.0136            0.3243           0.2049    0.1015                 0.6757
+     0.020    discovery 147          20     0.1361      0.3843 0.0457            0.1556           0.1275    0.4127                 0.8500
+     0.020 confirmation 159          19     0.1195      0.3256 0.0055            0.1892           0.0984    0.1168                 0.8421
+
+H4 at each threshold: classifier trained on discovery, AUC on the unseen confirmation datasets
+ threshold  train_losses  test_losses   AUC  CI_low  CI_high
+     0.005            63           57 0.694   0.607    0.773
+     0.010            42           37 0.775   0.694    0.847
+     0.020            20           19 0.647   0.522    0.756
+
+Pre-set criteria:
+  C1 n_rows AUC < 0.5 at every threshold, in both sets:          YES
+  C2 loss rate higher on <=1500 rows at every threshold, both sets: YES
+  C3 H4 AUC interval entirely above 0.5 at every threshold:      YES
+  => Findings are robust to the threshold.
+  Note: fewer than 20 'LightGBM loses' datasets in: T=0.02 (confirmation)

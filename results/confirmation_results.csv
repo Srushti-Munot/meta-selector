@@ -1,0 +1,7 @@
+method,mean_regret,median_regret,within_1pct,top1_hit,top2_hit,spearman
+always lgbm,0.0084,0.0003,0.7673,0.4214,0.6164,0.3475
+always rf,0.022,0.0099,0.5031,0.1761,0.3711,0.204
+best-average (from discovery),0.0084,0.0003,0.7673,0.4214,0.5975,0.4852
+random pick,0.0409,0.0246,0.4224,0.1667,0.3333,
+CHOOSER rf/relative (primary),0.0082,0.0,0.761,0.4403,0.6226,0.5351
+chooser rf/absolute (exploratory),0.0088,0.0,0.7673,0.434,0.6478,0.5204

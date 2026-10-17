@@ -1,0 +1,66 @@
+﻿147 datasets. LightGBM loses by >0.01 on 42 (29%).
+
+Best algorithm on the datasets where LightGBM loses:
+logreg        15
+svm            9
+extratrees     8
+knn            6
+rf             4
+
+Meta-features vs 'LightGBM loses'  (auc: 0.5 = no difference; >0.5 = higher when LightGBM loses)
+Careful: ~20 features tested, so about 1 will look 'significant' (p<0.05) by luck alone.
+             feature  median_when_loses  median_when_ok   auc  p_value
+              n_rows           1675.500        2000.000 0.305    0.000
+            log_rows              3.222           3.301 0.305    0.000
+           dim_ratio              0.015           0.009 0.600    0.059
+       mean_kurtosis              1.246           6.157 0.410    0.090
+       mean_abs_corr              0.192           0.138 0.575    0.154
+mean_cat_cardinality              0.000           0.000 0.555    0.241
+          n_features             14.000          19.000 0.447    0.313
+       log_imbalance              0.097           0.187 0.449    0.336
+       class_entropy              0.991           0.967 0.545    0.392
+       mean_abs_skew              0.787           1.424 0.458    0.428
+    frac_categorical              0.000           0.000 0.534    0.466
+            lm_stump              0.511           0.500 0.526    0.630
+  n_features_encoded             30.000          30.000 0.476    0.652
+         frac_skewed              0.333           0.500 0.476    0.650
+           n_classes              2.000           2.000 0.478    0.642
+         pca_95_frac              0.476           0.524 0.480    0.701
+            lm_tree3              0.585           0.587 0.482    0.735
+              lm_1nn              0.686           0.664 0.516    0.769
+        missing_frac              0.000           0.000 0.512    0.753
+               lm_nb              0.633           0.646 0.496    0.945
+
+Can meta-features predict 'LightGBM loses'?  CV AUC = 0.645 (+/- 0.100)   [0.5 = no signal]
+Top features by importance:
+log_rows         0.087
+n_rows           0.085
+dim_ratio        0.074
+mean_abs_skew    0.065
+mean_kurtosis    0.062
+lm_nb            0.061
+mean_abs_corr    0.056
+class_entropy    0.052
+
+Simple rule (class 1 = LightGBM loses):
+|--- n_rows <= 902.00
+|   |--- lm_tree3 <= 0.55
+|   |   |--- class: 0
+|   |--- lm_tree3 >  0.55
+|   |   |--- class: 1
+|--- n_rows >  902.00
+|   |--- mean_abs_skew <= 1.07
+|   |   |--- class: 0
+|   |--- mean_abs_skew >  1.07
+|   |   |--- class: 0
+
+
+By dataset size (last bin = datasets capped at 5000 rows):
+               n  lgbm_is_best  lgbm_regret  adv_mean  adv_std  simple_best
+bin                                                                        
+(0, 750]      26         0.231        0.013     0.026    0.040        0.462
+(750, 1500]   19         0.263        0.008     0.023    0.036        0.526
+(1500, 3000]  49         0.408        0.013     0.037    0.038        0.306
+(3000, 4999]  11         0.909        0.001     0.072    0.091        0.091
+(4999, 5000]  42         0.548        0.005     0.033    0.038        0.238
+Spearman(n_rows, lgbm advantage over others) = 0.099, p = 0.2333
